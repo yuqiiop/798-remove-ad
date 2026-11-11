@@ -7,7 +7,31 @@
 | 版本 | 说明 | 备注 |
 |---|---|---|
 | `v1.0.0` | 去广告、无壳改版（基座） | 使用中会弹「客户端需要更新」 |
-| `v1.1.0` | 在 v1.0.0 基础上移除更新提示，版本号对齐线上 3.1.10 | 本仓库 `dist/` 内成品 |
+| `v1.1.0` | 在 v1.0.0 基础上移除更新提示，版本号对齐线上 3.1.10 | 本仓库 `dist/` |
+| `v1.2.0` | 再切除广告总闸（云端开关 + 穿山甲/Gromore 初始化） | 推荐使用 |
+
+## v1.2.0 改了什么（切广告）
+
+现象：基座「去广告」只在本地生效，服务端下发 `adSwitch` 后广告回归。
+
+证据链：
+
+1. 应用代码（`com.ilife` / `com.cloudora`）**不直接引用**任何第三方广告 SDK（`com.qq.e` / `com.kwad` / `com.sigmob` / `com.beizi` / `com.wangmai` / `com.yfanads` … 全部 0 命中），全部广告经 `com.ilife.lib.common.ad.*` → 穿山甲 `TTAdSdk`（Gromore 聚合）出口。
+2. 云端开关路径：`SplashActivity` 拉 `CommonDS.adSwitch`（`CommonDS$x1` / `adSwitchReq`）→ 写入 `n0.E(Z)` → 本地 `n0.d()`；`App.w()` 读 `n0.d()` 决定是否 `startTTAdSdk`，`SplashActivity` 读 `n0.d()` 决定是否展示开屏。
+3. `App.w()` 里 `TTAdHelper.initTTAdSdk(context, "5655586")` 是**全包唯一**的 `TTAdSdk.init` 调用点。
+4. 广告位统一下发到 `TTAdManager.isShowAd(List, int)`（20+ 调用点：首页 banner、设备页、支付页、网课页…）。
+
+五刀（`patch/patch_ads.py`）：
+
+| # | 位置 | 改动 |
+|---|---|---|
+| 1 | `TTAdHelper.initTTAdSdk(Context,String)` | `return-void`，SDK 永不 init |
+| 2 | `TTAdHelper.startTTAdSdk(Function0,Function0)` | `return-void` |
+| 3 | `TTAdHelper.preloadSplashAd(Activity)` | `return-void`，不预加载开屏 |
+| 4 | `TTAdManager.isShowAd(List,int)` | `return false`，所有广告位判定关死 |
+| 5 | `n0.d()` | `return false`，云端开关本地缓存恒关 |
+
+关键点：**云端只能改配置，改不了代码**。第 1 刀让 `TTAdSdk.init` 永不执行，服务端无论下发什么 adSwitch、adSlot、水位线，都没有可渲染的 SDK；第 4/5 刀再断掉判定与开屏路径。
 
 ## v1.1.0 改了什么
 
@@ -39,7 +63,14 @@ java -jar uber-apk-signer-1.3.0.jar -a patched.apk -o signed/
 
 ## 成品
 
-`dist/798-noupdate-3.1.10-signed.apk`
+`dist/798-noad-noupdate-3.1.10-signed.apk`（推荐，v1.2.0）
+
+```
+size    52,018,364 B
+sha256  c64ae744591c3dd0c90685bd705175a1f2a71d1818c8def42d48909671f74b5a
+```
+
+`dist/798-noupdate-3.1.10-signed.apk`（v1.1.0，仅去更新提示）
 
 ```
 size    52,022,460 B
