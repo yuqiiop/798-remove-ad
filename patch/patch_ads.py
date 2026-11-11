@@ -10,7 +10,10 @@
  2. TTAdHelper.startTTAdSdk(Function0,Function0)-> return-void   （SDK 永不 start）
  3. TTAdHelper.preloadSplashAd(Activity)        -> return-void   （不预加载开屏）
  4. TTAdManager.isShowAd(List,int)              -> return false  （所有广告位判定关死）
- 5. n0.d()                                      -> return false  （云开关本地缓存恒 false）
+ 5. n0.d()                                      -> return true   （隐私已同意态；跳过温馨提示弹窗）
+
+注意：n0.d() 是「隐私政策已同意」标志（SplashActivity: if (n0.d()) initData(); else 弹 dlg_privacy_policy）。
+强制 false 会让 App 每次启动都弹窗，故必须置 true；广告不走这条路径，由 1–4 刀封死。
 
 用法：python patch_ads.py <apktool 解包目录>
 """
@@ -84,7 +87,7 @@ def main():
         os.path.join(root, CONF),
         [
             (".method public final d()Z",
-             "    const/4 v0, 0x0\n\n    return v0"),
+             "    const/4 v0, 0x1\n\n    return v0"),
         ],
     )
     print("完成。apktool b 重打包后签名安装。")

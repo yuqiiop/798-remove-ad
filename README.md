@@ -8,7 +8,29 @@
 |---|---|---|
 | `v1.0.0` | 去广告、无壳改版（基座） | 使用中会弹「客户端需要更新」 |
 | `v1.1.0` | 在 v1.0.0 基础上移除更新提示，版本号对齐线上 3.1.10 | 本仓库 `dist/` |
-| `v1.2.0` | 再切除广告总闸（云端开关 + 穿山甲/Gromore 初始化） | 推荐使用 |
+| `v1.2.0` | 再切除广告总闸（穿山甲/Gromore 初始化 + 广告位判定） | 副作用：每次启动弹隐私窗 |
+| `v1.3.0` | 修掉 v1.2.0 副作用：`n0.d()` 改回 true，直达主界面 | 推荐使用 |
+
+## v1.3.0 改了什么（去隐私弹窗）
+
+v1.2.0 把 `n0.d()` 当成「云端广告开关」强制成 false，实际它是**隐私政策已同意标志**：
+
+```
+SplashActivity.onCreate:
+    if (n0.d()) { initData(); }        // 已同意 → 直接进主界面
+    else        { C0(); }              // 未同意 → 弹 dlg_privacy_policy「温馨提示」
+```
+
+所以强制 false 等于「每次都未同意」，每次启动都弹窗。
+
+v1.3.0 把 `n0.d()` 改为 `return true`：
+
+- 启动直接走 `initData()`，`C0()`（隐私弹窗）与 `B0()`（同意后的二次确认弹窗）都不会被调用；
+- 广告不依赖这条路径——`initTTAdSdk` / `startTTAdSdk` / `preloadSplashAd` 仍是 `return-void`，`isShowAd` 仍是 `false`，穿山甲/Gromore 依旧不初始化。
+
+| # | 位置 | v1.2.0 | v1.3.0 |
+|---|---|---|---|
+| 5 | `n0.d()` | `return false`（弹窗复发） | `return true`（直达主界面） |
 
 ## v1.2.0 改了什么（切广告）
 
@@ -63,7 +85,14 @@ java -jar uber-apk-signer-1.3.0.jar -a patched.apk -o signed/
 
 ## 成品
 
-`dist/798-noad-noupdate-3.1.10-signed.apk`（推荐，v1.2.0）
+`dist/798-v1.3.0-noad-noupdate-signed.apk`（推荐，v1.3.0：无广告 + 无更新提示 + 无隐私弹窗）
+
+```
+size    52,018,364 B
+sha256  b3fd5f54e650bf96158ca46a773a62d2240367a2da72f0f240217aed76e36132
+```
+
+`dist/798-noad-noupdate-3.1.10-signed.apk`（v1.2.0，广告已切但每次启动弹隐私窗，建议弃用）
 
 ```
 size    52,018,364 B
